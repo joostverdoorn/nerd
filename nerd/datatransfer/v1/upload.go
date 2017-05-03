@@ -64,17 +64,6 @@ func (u *Uploader) upload(projectID, localDir string, concurrency int, progressC
 	// if err != nil {
 	// 	HandleError(err, cmd.opts.VerboseOutput)
 	// }
-	// progressCh := make(chan int64)
-	// progressBarDoneCh := make(chan struct{})
-	// if !cmd.opts.JSONOutput {
-	// 	go ProgressBar(size, progressCh, progressBarDoneCh)
-	// } else {
-	// 	go func() {
-	// 		for _ = range progressCh {
-	// 		}
-	// 		progressBarDoneCh <- struct{}{}
-	// 	}()
-	// }
 	//
 	// // Uploading
 	// doneCh := make(chan error)
