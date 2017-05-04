@@ -4,7 +4,6 @@ import (
 	"io"
 
 	v1payload "github.com/nerdalize/nerd/nerd/client/batch/v1/payload"
-	"github.com/pkg/errors"
 )
 
 type uploadProcess struct {
@@ -31,9 +30,30 @@ func newUploadProcess(ds *v1payload.Dataset, concurrency int, progressCh chan in
 	return process
 }
 
+type pipe struct {
+	r *io.PipeReader
+	w *io.PipeWriter
+}
+
+func newPipe() *pipe {
+	pr, pw := io.Pipe()
+	return &pipe{
+		r: pr,
+		w: pw,
+	}
+}
+
+func (p *uploadProcess) sendHeartbeats() {
+
+}
+
 func (p *uploadProcess) start() error {
-	doneCh := make(chan error)
-	go p.Upload(iw, p.concurrency, p.bucket, p.datasetRoot, progressCh)
+	go p.sendHeartbeats()
+	// doneCh := make(chan error)
+	// tar_upload := newPipe()
+	// upload_index := newPipe()
+
+	// go p.Upload(iw, p.concurrency, p.bucket, p.datasetRoot, progressCh)
 	// go func() {
 	// 	defer close(progressCh)
 	// 	uerr := dataclient.ChunkedUpload(NewChunker(v1data.UploadPolynomal, pr), iw, UploadConcurrency, ds.Bucket, ds.Root, progressCh)
@@ -42,19 +62,19 @@ func (p *uploadProcess) start() error {
 	// }()
 
 	// Tarring
-	err = tardir(dataPath, pw)
-	if err != nil && errors.Cause(err) != io.ErrClosedPipe {
-		HandleError(errors.Wrapf(err, "failed to tar '%s'", dataPath), cmd.opts.VerboseOutput)
-	}
-
-	// Finish uploading
-	err = pw.Close()
-	if err != nil {
-		HandleError(errors.Wrap(err, "failed to close chunked upload pipe writer"), cmd.opts.VerboseOutput)
-	}
-	err = <-doneCh
-	if err != nil {
-		HandleError(errors.Wrapf(err, "failed to upload '%s'", dataPath), cmd.opts.VerboseOutput)
-	}
+	// err = tardir(dataPath, pw)
+	// if err != nil && errors.Cause(err) != io.ErrClosedPipe {
+	// 	HandleError(errors.Wrapf(err, "failed to tar '%s'", dataPath), cmd.opts.VerboseOutput)
+	// }
+	//
+	// // Finish uploading
+	// err = pw.Close()
+	// if err != nil {
+	// 	HandleError(errors.Wrap(err, "failed to close chunked upload pipe writer"), cmd.opts.VerboseOutput)
+	// }
+	// err = <-doneCh
+	// if err != nil {
+	// 	HandleError(errors.Wrapf(err, "failed to upload '%s'", dataPath), cmd.opts.VerboseOutput)
+	// }
 	return nil
 }
