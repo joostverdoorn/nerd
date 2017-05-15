@@ -5,11 +5,9 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/jessevdk/go-flags"
 	"github.com/mitchellh/cli"
 	v1auth "github.com/nerdalize/nerd/nerd/client/auth/v1"
 	"github.com/nerdalize/nerd/nerd/conf"
@@ -21,43 +19,22 @@ const (
 	authorizeEndpoint = "o/authorize"
 )
 
-//LoginOpts describes command options
-type LoginOpts struct {
-	NerdOpts
-}
-
 //Login command
 type Login struct {
 	*command
-
-	opts   *LoginOpts
-	parser *flags.Parser
 }
 
 //LoginFactory returns a factory method for the join command
 func LoginFactory() (cli.Command, error) {
-	base, err := baseCommand()
+	comm, err := newCommand("nerd login", "start a new authorized session", "", nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create command")
 	}
-	base.help = ""
-	base.synopsis = "start a new authorized session"
-	base.parser = flags.NewNamedParser("nerd login", flags.Default)
-	base.ui = &cli.BasicUi{
-		Reader: os.Stdin,
-		Writer: os.Stderr,
-	}
-
 	cmd := &Login{
-		command: base,
-		opts:    &LoginOpts{},
+		command: comm,
 	}
-
 	cmd.runFunc = cmd.DoRun
-	_, err = cmd.command.parser.AddGroup("options", "options", cmd.opts)
-	if err != nil {
-		return nil, err
-	}
+
 	return cmd, nil
 }
 

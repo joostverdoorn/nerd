@@ -2,9 +2,10 @@ package command
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
+
+	"github.com/pkg/errors"
 
 	"github.com/jessevdk/go-flags"
 	"github.com/mitchellh/cli"
@@ -14,25 +15,39 @@ import (
 
 var errShowHelp = errors.New("show error")
 
-func baseCommand() (*command, error) {
-	opts := &ConfOpts{}
-	_, err := flags.NewParser(opts, flags.None).ParseArgs(os.Args[1:])
-	if err != nil {
-		return nil, err
+func (c *command) setDefaults() error {
+	nerd.SetupLogging(c.confOpts.VerboseOutput, c.confOpts.JSONOutput)
+	c.conf = conf.NewConf(c.confOpts.ConfigFile)
+	if c.confOpts.ConfigFile == "" {
+		def, err := conf.GetDefaultLocation()
+		if err != nil {
+			return err
+		}
+		c.conf.SetLocation(def)
 	}
+	return nil
+}
 
-	nerd.SetupLogging(opts.VerboseOutput, opts.JSONOutput)
-
+func newCommand(title, synopsis, help string, opts interface{}) (*command, error) {
 	cmd := &command{
-		conf: conf.NewConf(opts.ConfigFile),
+		help:     help,
+		synopsis: synopsis,
+		parser:   flags.NewNamedParser(title, flags.None),
+		confOpts: &ConfOpts{},
+		ui: &cli.BasicUi{
+			Reader: os.Stdin,
+			Writer: os.Stderr,
+		},
 	}
-	if opts.ConfigFile == "" {
-		var def string
-		def, err = conf.GetDefaultLocation()
+	if opts != nil {
+		_, err := cmd.parser.AddGroup("options", "options", opts)
 		if err != nil {
 			return nil, err
 		}
-		cmd.conf.SetLocation(def)
+	}
+	_, err := cmd.parser.AddGroup("output options", "output options", cmd.confOpts)
+	if err != nil {
+		return nil, err
 	}
 	return cmd, nil
 }
@@ -44,8 +59,8 @@ type command struct {
 	parser   *flags.Parser //option parser that will be used when parsing args
 	ui       cli.Ui
 	conf     conf.ConfInterface
+	confOpts *ConfOpts
 	// renderer Renderer
-	verbose bool
 	runFunc func(args []string) error
 }
 
@@ -76,7 +91,15 @@ func (c *command) Run(args []string) int {
 		var err error
 		args, err = c.parser.ParseArgs(args)
 		if err != nil {
+			// TODO: print err?
 			return 127
+		}
+		if c.confOpts != nil {
+			err = c.setDefaults()
+			if err != nil {
+				// TODO: print err?
+				return 127
+			}
 		}
 	}
 

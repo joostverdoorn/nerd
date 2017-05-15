@@ -1,47 +1,27 @@
 package command
 
 import (
-	"os"
-
 	"github.com/Sirupsen/logrus"
-	"github.com/jessevdk/go-flags"
 	"github.com/mitchellh/cli"
 	"github.com/nerdalize/nerd/nerd/conf"
+	"github.com/pkg/errors"
 )
-
-//QueueCreateOpts describes command options
-type QueueCreateOpts struct {
-	NerdOpts
-}
 
 //QueueCreate command
 type QueueCreate struct {
 	*command
-	opts   *QueueCreateOpts
-	parser *flags.Parser
 }
 
 //QueueCreateFactory returns a factory method for the join command
 func QueueCreateFactory() (cli.Command, error) {
-	cmd := &QueueCreate{
-		command: &command{
-			help:     "",
-			synopsis: "initialize a new queue for workers to consume tasks from",
-			parser:   flags.NewNamedParser("nerd queue create", flags.Default),
-			ui: &cli.BasicUi{
-				Reader: os.Stdin,
-				Writer: os.Stderr,
-			},
-		},
-
-		opts: &QueueCreateOpts{},
-	}
-
-	cmd.runFunc = cmd.DoRun
-	_, err := cmd.command.parser.AddGroup("options", "options", cmd.opts)
+	comm, err := newCommand("nerd queue create", "initialize a new queue for workers to consume tasks fro", "", nil)
 	if err != nil {
-		panic(err)
+		return nil, errors.Wrap(err, "failed to create command")
 	}
+	cmd := &QueueCreate{
+		command: comm,
+	}
+	cmd.runFunc = cmd.DoRun
 
 	return cmd, nil
 }

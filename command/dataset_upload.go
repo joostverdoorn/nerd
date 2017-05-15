@@ -2,14 +2,12 @@ package command
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/jessevdk/go-flags"
 	"github.com/mitchellh/cli"
 	"github.com/nerdalize/nerd/nerd/aws"
-	"github.com/nerdalize/nerd/nerd/conf"
 	v1datatransfer "github.com/nerdalize/nerd/nerd/service/datatransfer/v1"
 	"github.com/pkg/errors"
 )
@@ -25,7 +23,6 @@ const (
 
 //UploadOpts describes command options
 type UploadOpts struct {
-	NerdOpts
 	Tag string `long:"tag" default:"" default-mask:"" description:"use a tag to logically group datasets"`
 }
 
@@ -39,25 +36,16 @@ type Upload struct {
 
 //DatasetUploadFactory returns a factory method for the join command
 func DatasetUploadFactory() (cli.Command, error) {
-	cmd := &Upload{
-		command: &command{
-			help:     "",
-			synopsis: "upload data to the cloud and create a new dataset",
-			parser:   flags.NewNamedParser("nerd upload <path>", flags.Default),
-			ui: &cli.BasicUi{
-				Reader: os.Stdin,
-				Writer: os.Stderr,
-			},
-		},
-
-		opts: &UploadOpts{},
-	}
-
-	cmd.runFunc = cmd.DoRun
-	_, err := cmd.command.parser.AddGroup("options", "options", cmd.opts)
+	opts := &UploadOpts{}
+	comm, err := newCommand("nerd upload <path>", "upload data to the cloud and create a new dataset", "", opts)
 	if err != nil {
-		panic(err)
+		return nil, errors.Wrap(err, "failed to create command")
 	}
+	cmd := &Upload{
+		command: comm,
+		opts:    opts,
+	}
+	cmd.runFunc = cmd.DoRun
 
 	return cmd, nil
 }
@@ -65,7 +53,8 @@ func DatasetUploadFactory() (cli.Command, error) {
 //DoRun is called by run and allows an error to be returned
 func (cmd *Upload) DoRun(args []string) (err error) {
 	if len(args) < 1 {
-		return fmt.Errorf("not enough arguments, see --help")
+		return errShowHelp
+		// return fmt.Errorf("not enough arguments, see --help")
 	}
 
 	dataPath := args[0]
@@ -78,13 +67,13 @@ func (cmd *Upload) DoRun(args []string) (err error) {
 	}
 
 	// Config
-	config, err := conf.Read()
+	config, err := cmd.conf.Read()
 	if err != nil {
 		HandleError(err)
 	}
 
 	// Clients
-	batchclient, err := NewClient(cmd.ui)
+	batchclient, err := NewClient(cmd.ui, cmd.conf)
 	if err != nil {
 		HandleError(err)
 	}
@@ -103,7 +92,7 @@ func (cmd *Upload) DoRun(args []string) (err error) {
 		Tag:         cmd.opts.Tag,
 		Concurrency: 64,
 	}
-	if !cmd.opts.JSONOutput { // show progress bar
+	if !cmd.confOpts.JSONOutput { // show progress bar
 		progressCh := make(chan int64)
 		progressBarDoneCh := make(chan struct{})
 		size, err := v1datatransfer.GetLocalDatasetSize(context.Background(), dataPath)

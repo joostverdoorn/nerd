@@ -30,8 +30,8 @@ func (kw *stdoutkw) Write(k string) (err error) {
 }
 
 //NewClient creates a new batch Client.
-func NewClient(ui cli.Ui) (*v1batch.Client, error) {
-	c, err := conf.Read()
+func NewClient(ui cli.Ui, config conf.ConfInterface) (*v1batch.Client, error) {
+	c, err := config.Read()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read config")
 	}
