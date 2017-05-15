@@ -36,32 +36,34 @@ type Login struct {
 
 //LoginFactory returns a factory method for the join command
 func LoginFactory() (cli.Command, error) {
-	cmd := &Login{
-		command: &command{
-			help:     "",
-			synopsis: "start a new authorized session",
-			parser:   flags.NewNamedParser("nerd login", flags.Default),
-			ui: &cli.BasicUi{
-				Reader: os.Stdin,
-				Writer: os.Stderr,
-			},
-		},
+	base, err := baseCommand()
+	if err != nil {
+		return nil, err
+	}
+	base.help = ""
+	base.synopsis = "start a new authorized session"
+	base.parser = flags.NewNamedParser("nerd login", flags.Default)
+	base.ui = &cli.BasicUi{
+		Reader: os.Stdin,
+		Writer: os.Stderr,
+	}
 
-		opts: &LoginOpts{},
+	cmd := &Login{
+		command: base,
+		opts:    &LoginOpts{},
 	}
 
 	cmd.runFunc = cmd.DoRun
-	_, err := cmd.command.parser.AddGroup("options", "options", cmd.opts)
+	_, err = cmd.command.parser.AddGroup("options", "options", cmd.opts)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-
 	return cmd, nil
 }
 
 //DoRun is called by run and allows an error to be returned
 func (cmd *Login) DoRun(args []string) error {
-	c, err := conf.Read()
+	c, err := cmd.conf.Read()
 	if err != nil {
 		HandleError(errors.Wrap(err, "failed to read config"))
 	}
@@ -115,8 +117,7 @@ func spawnServer(svr *http.Server, cfg conf.AuthConfig, randomState string, done
 	mux.HandleFunc("/oauth/callback", func(w http.ResponseWriter, r *http.Request) {
 		if randomState != r.URL.Query().Get("state") {
 			doneCh <- response{
-				code: "",
-				err:  errors.Errorf("oauth state does not match provided state (expected: %v, actual: %v)", randomState, r.URL.Query().Get("state")),
+				err: errors.Errorf("oauth state does not match provided state (expected: %v, actual: %v)", randomState, r.URL.Query().Get("state")),
 			}
 			return
 		}
@@ -126,7 +127,6 @@ func spawnServer(svr *http.Server, cfg conf.AuthConfig, randomState string, done
 
 		doneCh <- response{
 			code: r.URL.Query().Get("code"),
-			err:  nil,
 		}
 	})
 
@@ -134,16 +134,14 @@ func spawnServer(svr *http.Server, cfg conf.AuthConfig, randomState string, done
 		base, err := url.Parse(cfg.APIEndpoint)
 		if err != nil {
 			doneCh <- response{
-				code: "",
-				err:  errors.Wrapf(err, "failed to parse auth api endpoint (%v)", cfg.APIEndpoint),
+				err: errors.Wrapf(err, "failed to parse auth api endpoint (%v)", cfg.APIEndpoint),
 			}
 			return
 		}
 		path, err := url.Parse(authorizeEndpoint)
 		if err != nil {
 			doneCh <- response{
-				code: "",
-				err:  errors.Wrapf(err, "failed to parse authorize endpoint (%v)", authorizeEndpoint),
+				err: errors.Wrapf(err, "failed to parse authorize endpoint (%v)", authorizeEndpoint),
 			}
 			return
 		}
@@ -163,8 +161,7 @@ func spawnServer(svr *http.Server, cfg conf.AuthConfig, randomState string, done
 	err := svr.ListenAndServe()
 	if err != nil {
 		doneCh <- response{
-			code: "",
-			err:  errors.Wrap(err, "failed to spawn local server"),
+			err: errors.Wrap(err, "failed to spawn local server"),
 		}
 	}
 }

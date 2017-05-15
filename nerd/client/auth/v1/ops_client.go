@@ -17,6 +17,15 @@ type OpsClient struct {
 	OpsClientConfig
 }
 
+//OpsClientInterface is an interface so client calls can be mocked
+type OpsClientInterface interface {
+	RefreshJWT(jwt, secret string) (string, error)
+	GetOAuthCredentials(code, clientID, localServerURL string) (output *v1payload.GetOAuthCredentialsOutput, err error)
+	RefreshOAuthCredentials(refreshToken, clientID string) (output *v1payload.RefreshOAuthCredentialsOutput, err error)
+}
+
+var _ OpsClientInterface = &OpsClient{}
+
 //OpsClientConfig is the config for OpsClient
 type OpsClientConfig struct {
 	Doer   Doer

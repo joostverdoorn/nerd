@@ -19,7 +19,7 @@ var ErrTokenUnset = fmt.Errorf("ErrTokenUnset")
 //ConfigProvider provides a oauth access token from the config file. For the default file location please see TokenFilename().
 type ConfigProvider struct {
 	*ProviderBasis
-	Client *v1auth.OpsClient
+	Client v1auth.OpsClientInterface
 }
 
 //NewConfigProvider creates a new ConfigProvider provider.

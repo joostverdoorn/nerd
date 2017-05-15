@@ -4,12 +4,38 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/jessevdk/go-flags"
 	"github.com/mitchellh/cli"
+	"github.com/nerdalize/nerd/nerd"
+	"github.com/nerdalize/nerd/nerd/conf"
 )
 
 var errShowHelp = errors.New("show error")
+
+func baseCommand() (*command, error) {
+	opts := &ConfOpts{}
+	_, err := flags.NewParser(opts, flags.None).ParseArgs(os.Args[1:])
+	if err != nil {
+		return nil, err
+	}
+
+	nerd.SetupLogging(opts.VerboseOutput, opts.JSONOutput)
+
+	cmd := &command{
+		conf: conf.NewConf(opts.ConfigFile),
+	}
+	if opts.ConfigFile == "" {
+		var def string
+		def, err = conf.GetDefaultLocation()
+		if err != nil {
+			return nil, err
+		}
+		cmd.conf.SetLocation(def)
+	}
+	return cmd, nil
+}
 
 //command is an abstract implementation for embedding in concrete commands and allows basic command functionality to be reused.
 type command struct {
@@ -17,7 +43,10 @@ type command struct {
 	synopsis string        //short help message, shown on the command overview
 	parser   *flags.Parser //option parser that will be used when parsing args
 	ui       cli.Ui
-	runFunc  func(args []string) error
+	conf     conf.ConfInterface
+	// renderer Renderer
+	verbose bool
+	runFunc func(args []string) error
 }
 
 //Will write help text for when a user uses --help, it automatically renders all option groups of the flags.Parser (augmented with default values). It will show an extended help message if it is not empty, else it shows the synopsis.

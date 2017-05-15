@@ -13,8 +13,7 @@ import (
 )
 
 const (
-	authHeader = "Authorization"
-	//TokenEndpoint is the endpoint from where to fetch the JWT.
+	authHeader       = "Authorization"
 	tokenEndpoint    = "token"
 	projectsEndpoint = "projects"
 )
@@ -24,6 +23,12 @@ type Client struct {
 	ClientConfig
 	cred string
 	m    sync.Mutex
+}
+
+//ClientInterface is an interface so client calls can be mocked
+type ClientInterface interface {
+	ListProjects() (output *v1payload.ListProjectsOutput, err error)
+	GetJWT(scope string) (output *v1payload.GetJWTOutput, err error)
 }
 
 //ClientConfig provides config details to create an Auth client.
