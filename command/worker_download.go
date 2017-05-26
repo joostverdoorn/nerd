@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/mitchellh/cli"
@@ -13,24 +14,21 @@ import (
 )
 
 const (
-	//OutputDirPermissions are the output directory's permissions.
-	OutputDirPermissions = 0755
-	//DownloadConcurrency is the amount of concurrent download threads.
-	DownloadConcurrency = 64
+	TaskInputHashLabel = "task-input-hash"
 )
 
-//Download command
-type Download struct {
+//WorkerDownload command
+type WorkerDownload struct {
 	*command
 }
 
-//DatasetDownloadFactory returns a factory method for the join command
-func DatasetDownloadFactory() (cli.Command, error) {
-	comm, err := newCommand("nerd dataset download <dataset> <output-dir>", "download data from the cloud to a local directory", "", nil)
+//WorkerDownloadFactory returns a factory method for the join command
+func WorkerDownloadFactory() (cli.Command, error) {
+	comm, err := newCommand("nerd worker download <worker-id> <output-dir>", "download worker output data to a local directory", "", nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create command")
 	}
-	cmd := &Download{
+	cmd := &WorkerDownload{
 		command: comm,
 	}
 	cmd.runFunc = cmd.DoRun
@@ -39,12 +37,12 @@ func DatasetDownloadFactory() (cli.Command, error) {
 }
 
 //DoRun is called by run and allows an error to be returned
-func (cmd *Download) DoRun(args []string) (err error) {
+func (cmd *WorkerDownload) DoRun(args []string) (err error) {
 	if len(args) < 2 {
 		return fmt.Errorf("not enough arguments, see --help")
 	}
 
-	datasetID := args[0]
+	workerID := args[0]
 	outputDir := args[1]
 
 	// Folder create and check
@@ -79,36 +77,45 @@ func (cmd *Download) DoRun(args []string) (err error) {
 		HandleError(errors.Wrap(err, "could not create aws dataops client"))
 	}
 
-	logrus.Infof("Downloading dataset with ID '%v'", datasetID)
+	datasets, err := batchclient.ListDatasets(ss.Project.Name, workerID)
+	if err != nil {
+		HandleError(err)
+	}
 	downloadConf := v1datatransfer.DownloadConfig{
 		BatchClient: batchclient,
 		DataOps:     dataOps,
-		LocalDir:    outputDir,
+		LocalDir:    "", //TBD
 		ProjectID:   ss.Project.Name,
-		DatasetID:   datasetID,
 		Concurrency: DownloadConcurrency,
+		DatasetID:   "", //TBD
 	}
-	if !cmd.jsonOutput { // show progress bar
+	for _, ds := range datasets.Datasets {
+		inputHash, ok := ds.Labels[TaskInputHashLabel]
+		if !ok {
+			HandleError(errors.Wrapf(err, "dataset %v does not have the '%v' label", ds.DatasetID, TaskInputHashLabel))
+		}
+		dir := path.Join(outputDir, fmt.Sprintf("%v_%v", inputHash, ds.DatasetID))
+		err = os.Mkdir(dir, OutputDirPermissions)
+		if os.IsExist(err) {
+			continue
+		}
+		logrus.Infof("Downloading dataset with ID '%v'", ds.DatasetID)
 		progressCh := make(chan int64)
 		progressBarDoneCh := make(chan struct{})
 		var size int64
-		size, err = v1datatransfer.GetRemoteDatasetSize(context.Background(), batchclient, dataOps, ss.Project.Name, datasetID)
+		size, err = v1datatransfer.GetRemoteDatasetSize(context.Background(), batchclient, dataOps, ss.Project.Name, ds.DatasetID)
 		if err != nil {
 			HandleError(err)
 		}
 		go ProgressBar(size, progressCh, progressBarDoneCh)
 		downloadConf.ProgressCh = progressCh
+		downloadConf.DatasetID = ds.DatasetID
+		downloadConf.LocalDir = dir
 		err = v1datatransfer.Download(context.Background(), downloadConf)
 		if err != nil {
-			HandleError(errors.Wrapf(err, "failed to download dataset '%v'", datasetID))
+			HandleError(errors.Wrapf(err, "failed to download dataset '%v'", ds.DatasetID))
 		}
 		<-progressBarDoneCh
-	} else { //do not show progress bar
-		err = v1datatransfer.Download(context.Background(), downloadConf)
-		if err != nil {
-			HandleError(errors.Wrapf(err, "failed to download dataset '%v'", datasetID))
-		}
 	}
-
 	return nil
 }

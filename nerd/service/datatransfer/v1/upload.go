@@ -16,6 +16,7 @@ type UploadConfig struct {
 	LocalDir    string
 	ProjectID   string
 	Tag         string
+	Labels      map[string]string
 	Concurrency int
 	ProgressCh  chan<- int64
 }
@@ -25,7 +26,7 @@ func Upload(ctx context.Context, conf UploadConfig) (string, error) {
 	if conf.ProgressCh != nil {
 		defer close(conf.ProgressCh)
 	}
-	ds, err := conf.BatchClient.CreateDataset(conf.ProjectID, conf.Tag)
+	ds, err := conf.BatchClient.CreateDataset(conf.ProjectID, conf.Tag, conf.Labels)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to create dataset")
 	}

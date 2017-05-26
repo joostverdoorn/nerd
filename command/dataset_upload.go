@@ -13,17 +13,14 @@ import (
 )
 
 const (
-	//DatasetFilename is the filename of the file that contains the dataset ID in the data folder.
-	DatasetFilename = ".dataset"
-	//DatasetPermissions are the permissions for DatasetFilename
-	DatasetPermissions = 0644
 	//UploadConcurrency is the amount of concurrent upload threads.
 	UploadConcurrency = 64
 )
 
 //UploadOpts describes command options
 type UploadOpts struct {
-	Tag string `long:"tag" default:"" default-mask:"" description:"use a tag to logically group datasets"`
+	Tag    string            `long:"tag" default:"" default-mask:"" description:"use a tag to logically group datasets"`
+	Labels map[string]string `long:"label" short:"l" description:"add custom labels"`
 }
 
 //Upload command
@@ -86,7 +83,8 @@ func (cmd *Upload) DoRun(args []string) (err error) {
 		LocalDir:    dataPath,
 		ProjectID:   ss.Project.Name,
 		Tag:         cmd.opts.Tag,
-		Concurrency: 64,
+		Labels:      cmd.opts.Labels,
+		Concurrency: UploadConcurrency,
 	}
 	if !cmd.jsonOutput { // show progress bar
 		progressCh := make(chan int64)
