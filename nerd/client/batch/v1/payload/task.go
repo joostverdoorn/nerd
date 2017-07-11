@@ -7,6 +7,7 @@ type TaskSummary struct {
 	Status          string   `json:"status,omitempty"`
 	OutputDatasetID string   `json:"output_dataset_id"`
 	Cmd             []string `json:"cmd"`
+	TTL             int64    `json:"ttl" valid:"required"`
 }
 
 //StopTaskInput is input for task creation
