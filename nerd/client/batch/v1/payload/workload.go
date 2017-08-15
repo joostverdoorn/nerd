@@ -47,7 +47,6 @@ type CreateWorkloadInput struct {
 	InputDatasetID string            `json:"input_dataset_id"`
 	UseCuteur      bool              `json:"use_cuteur"`
 	Env            map[string]string `json:"env"`
-	PullSecret     string            `json:"pull_secret"`
 }
 
 //CreateWorkloadOutput is output for workload creation
