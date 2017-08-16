@@ -41,12 +41,14 @@ type DescribeWorkloadOutput struct {
 
 //CreateWorkloadInput is input for workload creation
 type CreateWorkloadInput struct {
-	ProjectID      string            `json:"project_id" valid:"required"`
-	Image          string            `json:"image" valid:"required"`
-	NrOfWorkers    int               `json:"nr_of_workers" valid:"required"`
-	InputDatasetID string            `json:"input_dataset_id"`
-	UseCuteur      bool              `json:"use_cuteur"`
-	Env            map[string]string `json:"env"`
+	ProjectID       string            `json:"project_id" valid:"required"`
+	Image           string            `json:"image" valid:"required"`
+	NrOfWorkers     int               `json:"nr_of_workers" valid:"required"`
+	InputDatasetID  string            `json:"input_dataset_id"`
+	UseCuteur       bool              `json:"use_cuteur"`
+	Env             map[string]string `json:"env"`
+	BuilderImage    string            `json:"builder_image"`
+	DownloaderImage string            `json:"downloader_image"`
 }
 
 //CreateWorkloadOutput is output for workload creation
